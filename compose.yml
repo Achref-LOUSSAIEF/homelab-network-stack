@@ -163,7 +163,7 @@ services:
   # ---------------------------------------------------------------------------
   prometheus:
     <<: *hardening
-    image: prom/prometheus:v3.15.0
+    image: prom/prometheus:v3.15.1
     read_only: true
     command:
       - --config.file=/etc/prometheus/prometheus.yml
