@@ -213,7 +213,7 @@ services:
 
   alloy:
     <<: *hardening
-    image: grafana/alloy:v1.20.1
+    image: grafana/alloy:v1.21.2
     user: "65534:65534"
     command:
       - run
