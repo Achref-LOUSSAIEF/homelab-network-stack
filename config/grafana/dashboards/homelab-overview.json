@@ -1,6 +1,6 @@
 {
   "uid": "homelab-overview",
-  "title": "Homelab – Vue d'ensemble",
+  "title": "Homelab – Overview",
   "tags": [
     "homelab"
   ],
@@ -43,7 +43,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "Disponibilité des services",
+      "title": "Service availability",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -55,7 +55,7 @@
     },
     {
       "id": 2,
-      "title": "Sondes HTTP et DNS",
+      "title": "HTTP and DNS probes",
       "type": "stat",
       "gridPos": {
         "x": 0,
@@ -124,7 +124,7 @@
     },
     {
       "id": 3,
-      "title": "Cibles Prometheus",
+      "title": "Prometheus targets",
       "type": "stat",
       "gridPos": {
         "x": 16,
@@ -193,7 +193,7 @@
     },
     {
       "id": 4,
-      "title": "Latence des sondes",
+      "title": "Probe latency",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -225,7 +225,7 @@
     },
     {
       "id": 5,
-      "title": "Temps de résolution DNS (AdGuard)",
+      "title": "DNS resolution time (AdGuard)",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -258,7 +258,7 @@
     {
       "id": 6,
       "type": "row",
-      "title": "Trafic (Traefik)",
+      "title": "Traffic (Traefik)",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -270,7 +270,7 @@
     },
     {
       "id": 7,
-      "title": "Requêtes par service",
+      "title": "Requests per service",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -302,7 +302,7 @@
     },
     {
       "id": 8,
-      "title": "Erreurs 5xx par service",
+      "title": "5xx errors per service",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -335,7 +335,7 @@
     {
       "id": 9,
       "type": "row",
-      "title": "Hôte",
+      "title": "Host",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -367,7 +367,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "CPU utilisé"
+          "legendFormat": "CPU used"
         }
       ],
       "fieldConfig": {
@@ -381,7 +381,7 @@
     },
     {
       "id": 11,
-      "title": "Mémoire",
+      "title": "Memory",
       "type": "timeseries",
       "gridPos": {
         "x": 8,
@@ -401,7 +401,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "Mémoire utilisée"
+          "legendFormat": "Memory used"
         }
       ],
       "fieldConfig": {
@@ -415,7 +415,7 @@
     },
     {
       "id": 12,
-      "title": "Réseau",
+      "title": "Network",
       "type": "timeseries",
       "gridPos": {
         "x": 16,
@@ -435,7 +435,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "Entrant"
+          "legendFormat": "Inbound"
         },
         {
           "refId": "B",
@@ -444,7 +444,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "Sortant"
+          "legendFormat": "Outbound"
         }
       ],
       "fieldConfig": {
@@ -469,7 +469,7 @@
     },
     {
       "id": 14,
-      "title": "Logs des conteneurs",
+      "title": "Container logs",
       "type": "logs",
       "gridPos": {
         "x": 0,

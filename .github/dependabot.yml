@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Propose une PR quand une nouvelle version d'image est publiée
+  # Opens a PR when a new image version is published
   - package-ecosystem: docker-compose
     directory: /
     schedule:

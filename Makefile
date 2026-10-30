@@ -2,35 +2,35 @@
 
 COMPOSE := docker compose
 
-help: ## Affiche cette aide
+help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-10s %s\n", $$1, $$2}'
 
-init: ## Prépare l'hôte : .env, secrets, répertoires de données
+init: ## Prepare the host: .env, secrets, data directories
 	@./scripts/init.sh
 
-up: ## Démarre la stack puis configure AdGuard au premier lancement
+up: ## Start the stack, then configure AdGuard on first run
 	$(COMPOSE) up -d
 	@./scripts/adguard-setup.sh
 
-down: ## Arrête la stack (les données sont conservées)
+down: ## Stop the stack (data is kept)
 	$(COMPOSE) down
 
-restart: down up ## Redémarre la stack
+restart: down up ## Restart the stack
 
-ps: ## État des conteneurs
+ps: ## Container status
 	$(COMPOSE) ps
 
-logs: ## Suit les logs (make logs s=traefik pour un seul service)
+logs: ## Follow logs (make logs s=traefik for one service)
 	$(COMPOSE) logs -f --tail=100 $(s)
 
-validate: ## Vérifie la syntaxe du compose et des configurations
+validate: ## Validate the Compose file and configs
 	$(COMPOSE) config --quiet
 	docker run --rm -v $(PWD)/config/prometheus:/etc/prometheus:ro --entrypoint promtool \
 		prom/prometheus:v3.15.0 check config /etc/prometheus/prometheus.yml
 
-test: ## Lance les tests de fumée sur la stack démarrée
+test: ## Run smoke tests against the running stack
 	@./scripts/smoke-test.sh
 
-clean: ## Supprime conteneurs, volumes et données (irréversible)
+clean: ## Remove containers, volumes and data (irreversible)
 	$(COMPOSE) down -v
 	sudo rm -rf data/

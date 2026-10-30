@@ -1,5 +1,5 @@
-// Collecte des logs de tous les conteneurs de la stack et envoi vers Loki.
-// L'accès à Docker passe par socket-proxy (lecture seule), jamais par le socket.
+// Collects logs from every container in the stack and ships them to Loki.
+// Docker is reached through socket-proxy (read-only), never the raw socket.
 
 discovery.docker "containers" {
   host = "tcp://socket-proxy:2375"

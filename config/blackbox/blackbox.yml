@@ -5,7 +5,6 @@ modules:
     http:
       preferred_ip_protocol: ip4
       follow_redirects: true
-      valid_status_codes: []   # 2xx par défaut
 
   dns_resolve:
     prober: dns
