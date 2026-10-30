@@ -177,7 +177,7 @@ services:
 
   blackbox-exporter:
     <<: *hardening
-    image: prom/blackbox-exporter:v0.29.0
+    image: prom/blackbox-exporter:v0.29.1
     read_only: true
     command:
       - --config.file=/etc/blackbox/blackbox.yml
