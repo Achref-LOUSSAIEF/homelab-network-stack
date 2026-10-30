@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Propose une PR quand une nouvelle version d'image est publiée
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

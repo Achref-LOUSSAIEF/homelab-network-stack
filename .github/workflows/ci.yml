@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Vérifier les scripts shell
+        run: shellcheck scripts/*.sh
+
+      - name: Vérifier les fichiers YAML
+        run: |
+          pip install --quiet yamllint
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 160}}}' \
+            compose.yml config/ .github/
+
+      - name: Valider le fichier Compose
+        run: |
+          cp .env.example .env
+          mkdir -p secrets && touch secrets/{traefik_dashboard_users,grafana_admin_password,wg-easy.env}
+          docker compose config --quiet
+
+      - name: Valider la configuration Prometheus
+        run: |
+          docker run --rm -v "$PWD/config/prometheus:/etc/prometheus:ro" \
+            --entrypoint promtool prom/prometheus:v3.15.0 \
+            check config /etc/prometheus/prometheus.yml
+
+  smoke-test:
+    name: Démarrage et tests de la stack
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Préparer l'environnement de test
+        run: |
+          cat > .env <<'EOF'
+          DOMAIN=homelab.test
+          ACME_EMAIL=ci@homelab.test
+          ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory
+          WG_HOST=127.0.0.1
+          WG_ADMIN_USER=admin
+          GRAFANA_ADMIN_USER=admin
+          ADGUARD_ADMIN_USER=admin
+          TRAEFIK_ADMIN_USER=admin
+          EOF
+          ./scripts/init.sh
+
+      - name: Démarrer la stack
+        run: make up
+
+      - name: Tests de fumée
+        run: make test
+
+      - name: Logs en cas d'échec
+        if: failure()
+        run: docker compose ps -a && docker compose logs --tail=80
+
+      - name: Arrêter la stack
+        if: always()
+        run: docker compose down -v
