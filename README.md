@@ -2,46 +2,46 @@
 
 ![CI](https://github.com/Achref-LOUSSAIEF/homelab-network-stack/actions/workflows/ci.yml/badge.svg)
 
-Infrastructure réseau self-hosted entièrement conteneurisée, déployable en une seule commande :
-VPN WireGuard, DNS filtrant, reverse proxy avec TLS automatique, supervision et logs centralisés.
+Fully containerized self-hosted network infrastructure, deployable with a single command:
+WireGuard VPN, filtering DNS, reverse proxy with automatic TLS, monitoring and centralized logs.
 
-| Service | Rôle | URL |
+| Service | Role | URL |
 |---|---|---|
-| **Traefik** | Reverse proxy, certificats Let's Encrypt, en-têtes de sécurité | `https://traefik.<domaine>` |
-| **wg-easy** | Serveur WireGuard + interface de gestion des clients | `https://vpn.<domaine>` |
-| **AdGuard Home** | DNS filtrant (pubs, trackers) pour les clients VPN | `https://dns.<domaine>` |
-| **Grafana** | Dashboards métriques + logs | `https://grafana.<domaine>` |
-| **Prometheus** | Collecte des métriques, règles d'alerte | interne uniquement |
-| **blackbox-exporter** | Sondes de disponibilité HTTP et DNS | interne uniquement |
-| **node-exporter** | Métriques de l'hôte (CPU, mémoire, disque, réseau) | interne uniquement |
-| **Loki + Alloy** | Centralisation des logs de tous les conteneurs | interne uniquement |
-| **docker-socket-proxy** | Accès en lecture seule à l'API Docker | interne uniquement |
+| **Traefik** | Reverse proxy, Let's Encrypt certificates, security headers | `https://traefik.<domain>` |
+| **wg-easy** | WireGuard server + client management UI | `https://vpn.<domain>` |
+| **AdGuard Home** | Filtering DNS (ads, trackers) for VPN clients | `https://dns.<domain>` |
+| **Grafana** | Metrics and logs dashboards | `https://grafana.<domain>` |
+| **Prometheus** | Metrics collection, alerting rules | internal only |
+| **blackbox-exporter** | HTTP and DNS availability probes | internal only |
+| **node-exporter** | Host metrics (CPU, memory, disk, network) | internal only |
+| **Loki + Alloy** | Centralized logs from all containers | internal only |
+| **docker-socket-proxy** | Read-only access to the Docker API | internal only |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     internet((Internet))
-    client([Client VPN])
+    client([VPN client])
 
-    subgraph host[Hôte Docker]
-        subgraph frontend[réseau frontend]
+    subgraph host[Docker host]
+        subgraph frontend[frontend network]
             traefik[Traefik :443]
             grafana[Grafana]
             adguardUI[AdGuard - UI]
         end
-        subgraph vpn[réseau vpn 10.8.1.0/24]
+        subgraph vpn[vpn network 10.8.1.0/24]
             wg[wg-easy 10.8.1.2]
             adguard[AdGuard DNS 10.8.1.3]
         end
-        subgraph monitoring[réseau monitoring - interne]
+        subgraph monitoring[monitoring network - internal]
             prom[Prometheus]
             bb[blackbox-exporter]
             node[node-exporter]
             loki[Loki]
             alloy[Alloy]
         end
-        subgraph socket[réseau socket - interne]
+        subgraph socket[socket network - internal]
             proxy[docker-socket-proxy]
         end
     end
@@ -50,117 +50,113 @@ flowchart LR
     client -- "51820/udp" --> wg
     wg -- "DNS" --> adguard
     traefik --> grafana & adguardUI & wg
-    traefik -. "découverte" .-> proxy
+    traefik -. "discovery" .-> proxy
     alloy -. "logs" .-> proxy
     alloy --> loki
     prom --> bb & node & traefik & loki
-    bb -. "sondes HTTP/DNS" .-> grafana & adguard & wg
+    bb -. "HTTP/DNS probes" .-> grafana & adguard & wg
     grafana --> prom & loki
 ```
 
-Seuls deux ports sont exposés sur l'hôte : **443/tcp** (Traefik) et **51820/udp** (WireGuard).
-Le port 80 n'est pas ouvert : les certificats sont obtenus par challenge TLS-ALPN sur le port 443.
+Only two ports are exposed on the host: **443/tcp** (Traefik) and **51820/udp** (WireGuard).
+Port 80 is not opened: certificates are obtained through the TLS-ALPN challenge on port 443.
 
-## Démarrage rapide
+## Quick start
 
-**Prérequis** : Docker Engine 24+ avec le plugin Compose, `make`, `openssl`, `curl`, et un noyau Linux
-avec les modules `ip_tables` / `iptable_nat` (chargés automatiquement par `make init`).
-Pour un déploiement réel : un nom de domaine dont les sous-domaines `grafana`, `vpn`, `dns`
-et `traefik` pointent vers l'IP publique de l'hôte.
+**Requirements**: Docker Engine 24+ with the Compose plugin, `make`, `openssl`, `curl`, and a Linux kernel
+with the `ip_tables` / `iptable_nat` modules (loaded automatically by `make init`).
+For a real deployment: a domain name whose `grafana`, `vpn`, `dns` and `traefik` subdomains
+point to the host's public IP.
 
 ```bash
 git clone https://github.com/Achref-LOUSSAIEF/homelab-network-stack.git
 cd homelab-network-stack
 
-make init     # crée .env : renseigne DOMAIN, ACME_EMAIL et WG_HOST, puis relance make init
-make init     # génère les secrets et les répertoires de données
-make up       # démarre la stack et configure AdGuard
-make test     # vérifie que tout fonctionne
+make init     # creates .env: fill in DOMAIN, ACME_EMAIL and WG_HOST, then run make init again
+make init     # generates secrets and data directories
+make up       # starts the stack and configures AdGuard
+make test     # checks that everything works
 ```
 
-Les mots de passe d'administration sont générés dans `secrets/` (jamais versionné).
-Ensuite, crée tes clients VPN sur `https://vpn.<domaine>` : ils utiliseront automatiquement AdGuard comme DNS.
+Admin passwords are generated in `secrets/` (never committed).
+Then create your VPN clients at `https://vpn.<domain>`: they will automatically use AdGuard as their DNS.
 
-Autres commandes : `make help`.
+Other commands: `make help`.
 
-## Sécurité
+## Security
 
-**Segmentation réseau.** Chaque service ne rejoint que les réseaux dont il a besoin :
+**Network segmentation.** Each service only joins the networks it needs:
 
-| Réseau | Type | Contenu | Pourquoi |
+| Network | Type | Members | Why |
 |---|---|---|---|
-| `frontend` | bridge | Traefik, Grafana, AdGuard (UI) | Interfaces web publiées |
-| `vpn` | bridge | wg-easy, AdGuard (DNS), Traefik, blackbox | Les clients VPN n'atteignent que le DNS et le proxy |
-| `monitoring` | **internal** | Prometheus, exporters, Loki, Alloy, Grafana | Aucun accès Internet, rien n'est publié |
-| `socket` | **internal** | docker-socket-proxy, Traefik, Alloy | Isole l'accès à l'API Docker |
+| `frontend` | bridge | Traefik, Grafana, AdGuard (UI) | Published web interfaces |
+| `vpn` | bridge | wg-easy, AdGuard (DNS), Traefik, blackbox | VPN clients can only reach DNS and the proxy |
+| `monitoring` | **internal** | Prometheus, exporters, Loki, Alloy, Grafana | No Internet access, nothing published |
+| `socket` | **internal** | docker-socket-proxy, Traefik, Alloy | Isolates access to the Docker API |
 
-**Durcissement des conteneurs.**
-- `no-new-privileges` et `cap_drop: ALL` sur tous les services (sauf wg-easy, voir ci-dessous).
-- Exécution **non-root** : Traefik (65532), Alloy (65534), Grafana (472), Prometheus et
-  les exporters (nobody), Loki (10001). Traefik écoute sur le port 443 sans être root
-  grâce au sysctl `net.ipv4.ip_unprivileged_port_start`, limité à son namespace réseau.
-- Système de fichiers en **lecture seule** pour Traefik, Prometheus, les exporters et le proxy Docker.
-- Aucun conteneur n'accède directement au socket Docker : Traefik et Alloy passent par
-  `docker-socket-proxy`, qui n'autorise que les requêtes en lecture.
-- **Exceptions documentées** :
-  - wg-easy tourne en root avec la capacité `NET_ADMIN`, nécessaire pour créer l'interface `wg0`
-    et les règles NAT des clients ;
-  - AdGuard tourne en root car il refuse de démarrer autrement au premier lancement, mais avec
-    seulement `NET_BIND_SERVICE` et `NET_RAW` (toutes les autres capacités sont retirées).
+**Container hardening.**
+- `no-new-privileges` and `cap_drop: ALL` on every service (except wg-easy, see below).
+- **Non-root** execution: Traefik (65532), Alloy (65534), Grafana (472), Prometheus and
+  the exporters (nobody), Loki (10001). Traefik listens on port 443 without root
+  thanks to the `net.ipv4.ip_unprivileged_port_start` sysctl, scoped to its network namespace.
+- **Read-only** filesystem for Traefik, Prometheus, the exporters and the Docker proxy.
+- No container accesses the Docker socket directly: Traefik and Alloy go through
+  `docker-socket-proxy`, which only allows read requests.
+- **Documented exceptions**:
+  - wg-easy runs as root with the `NET_ADMIN` capability, required to create the `wg0` interface
+    and the clients' NAT rules;
+  - AdGuard runs as root because it refuses to start otherwise on first launch, but with
+    only `NET_BIND_SERVICE` and `NET_RAW` (all other capabilities are dropped).
 
-**Secrets.** Générés aléatoirement par `scripts/init.sh`, stockés hors du dépôt dans `secrets/`
-(répertoire en `700`) et injectés via les secrets Docker Compose (`*_FILE`) quand l'image le permet.
+**Secrets.** Randomly generated by `scripts/init.sh`, stored outside the repository in `secrets/`
+(directory mode `700`) and injected through Docker Compose secrets (`*_FILE`) when the image supports it.
 
-**TLS.** TLS 1.2 minimum, suites de chiffrement modernes, HSTS et en-têtes de sécurité
-appliqués à tous les routeurs (`config/traefik/dynamic/security.yml`). Le dashboard Traefik est protégé
-par authentification basique.
+**TLS.** TLS 1.2 minimum, modern cipher suites, HSTS and security headers
+applied to every router (`config/traefik/dynamic/security.yml`). The Traefik dashboard is protected
+by basic authentication.
 
-## Supervision
+## Monitoring
 
-Le dashboard **Homelab – Vue d'ensemble** est provisionné automatiquement dans Grafana :
-- état UP/DOWN de chaque sonde (HTTP et DNS) et de chaque cible Prometheus ;
-- latence des sondes et temps de résolution DNS d'AdGuard ;
-- requêtes et erreurs 5xx par service (métriques Traefik) ;
-- CPU, mémoire et trafic réseau de l'hôte ;
-- logs de tous les conteneurs, filtrables par service (Loki).
+The **Homelab – Overview** dashboard is provisioned automatically in Grafana:
+- UP/DOWN status of each probe (HTTP and DNS) and each Prometheus target;
+- probe latency and AdGuard DNS resolution time;
+- requests and 5xx errors per service (Traefik metrics);
+- host CPU, memory and network traffic;
+- logs from all containers, filterable by service (Loki).
 
-Règles d'alerte (`config/prometheus/rules/alerts.yml`) : cible injoignable, sonde en échec,
-DNS lent, CPU/mémoire/disque de l'hôte. Elles sont visibles dans Prometheus et Grafana.
+Alerting rules (`config/prometheus/rules/alerts.yml`): unreachable target, failing probe,
+slow DNS, host CPU/memory/disk. They are visible in Prometheus and Grafana.
 
-## Intégration continue
+## Continuous integration
 
-À chaque push, GitHub Actions :
-1. vérifie les scripts (`shellcheck`), les YAML (`yamllint`), le fichier Compose et la configuration Prometheus (`promtool`) ;
-2. démarre la stack complète sur le runner ;
-3. lance `scripts/smoke-test.sh` : chaque interface répond en HTTPS via Traefik, AdGuard résout des noms,
-   toutes les cibles et sondes Prometheus sont UP, Loki reçoit les logs ;
-4. affiche les logs des conteneurs en cas d'échec, puis arrête la stack.
+On every push, GitHub Actions:
+1. checks the scripts (`shellcheck`), the YAML files (`yamllint`), the Compose file and the Prometheus configuration (`promtool`);
+2. starts the full stack on the runner;
+3. runs `scripts/smoke-test.sh`: every interface responds over HTTPS through Traefik, AdGuard resolves names,
+   all Prometheus targets and probes are UP, Loki receives logs;
+4. prints the container logs on failure, then stops the stack.
 
-Dependabot propose chaque semaine une mise à jour des images Docker épinglées.
+Dependabot proposes updates to the pinned Docker images every week.
 
-## Arborescence
+## Project layout
 
 ```
-compose.yml                  définition de la stack
-.env.example                 variables à renseigner
-Makefile                     commandes courantes
+compose.yml                  stack definition
+.env.example                 variables to fill in
+Makefile                     common commands
 scripts/
-  init.sh                    secrets + répertoires de données
-  adguard-setup.sh           configuration initiale d'AdGuard via son API
-  smoke-test.sh              tests de bout en bout
+  init.sh                    secrets + data directories
+  adguard-setup.sh           initial AdGuard configuration through its API
+  smoke-test.sh              end-to-end tests
 config/
-  traefik/dynamic/           middlewares et options TLS
-  prometheus/                scraping, sondes, règles d'alerte
-  blackbox/                  modules de sondes HTTP et DNS
-  loki/  alloy/              stockage et collecte des logs
-  grafana/                   datasources et dashboard provisionnés
-docs/troubleshooting.md      problèmes rencontrés et diagnostic
+  traefik/dynamic/           middlewares and TLS options
+  prometheus/                scraping, probes, alerting rules
+  blackbox/                  HTTP and DNS probe modules
+  loki/  alloy/              log storage and collection
+  grafana/                   provisioned datasources and dashboard
+docs/troubleshooting.md      known issues and diagnostics
 ```
 
-## Dépannage
+## Troubleshooting
 
-Voir [docs/troubleshooting.md](docs/troubleshooting.md).
-
-## Licence
-
-MIT
+See [docs/troubleshooting.md](docs/troubleshooting.md).
